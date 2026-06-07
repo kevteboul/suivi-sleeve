@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Suivi Sleeve">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <title>Suivi Sleeve</title>
+  <style>
+    :root { --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#f8fafc; --line:#334155; --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444; --blue:#38bdf8; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:var(--bg); color:var(--text); padding:14px; }
+    h1 { font-size:24px; margin:8px 0 12px; }
+    h2 { font-size:17px; margin:0 0 10px; }
+    .grid { display:grid; gap:12px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; }
+    label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
+    input, select, textarea, button { width:100%; border-radius:12px; border:1px solid var(--line); padding:12px; background:#0b1220; color:var(--text); font-size:16px; }
+    textarea { min-height:74px; resize:vertical; }
+    button { background:var(--blue); color:#031018; font-weight:700; border:0; margin-top:12px; }
+    button.secondary { background:#1f2937; color:var(--text); border:1px solid var(--line); }
+    button.danger { background:#7f1d1d; color:#fff; }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .metrics { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .metric { background:#0b1220; border:1px solid var(--line); border-radius:14px; padding:12px; }
+    .metric .n { font-size:22px; font-weight:800; margin-top:2px; }
+    .muted { color:var(--muted); font-size:13px; }
+    .pill { display:inline-block; padding:4px 8px; border-radius:999px; background:#0b1220; border:1px solid var(--line); color:var(--muted); font-size:12px; margin:2px; }
+    .bar { height:10px; background:#0b1220; border-radius:999px; overflow:hidden; border:1px solid var(--line); margin-top:8px; }
+    .fill { height:100%; width:0%; background:var(--ok); }
+    nav { position:sticky; bottom:0; display:grid; grid-template-columns:repeat(4,1fr); gap:6px; background:rgba(15,23,42,.94); padding:8px 0 calc(8px + env(safe-area-inset-bottom)); backdrop-filter:blur(10px); }
+    nav button { margin:0; padding:10px 6px; font-size:13px; background:#1f2937; color:#fff; }
+    nav button.active { background:var(--blue); color:#031018; }
+    .hidden { display:none; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th,td { border-bottom:1px solid var(--line); padding:8px 4px; text-align:left; vertical-align:top; }
+    .warn { color:var(--warn); } .bad { color:var(--bad); } .ok { color:var(--ok); }
+  </style>
+</head>
+<body>
+  <h1>Suivi Sleeve</h1>
+
+  <section id="tab-home" class="grid">
+    <div class="card">
+      <h2>Aujourd’hui</h2>
+      <div class="metrics">
+        <div class="metric"><div class="muted">Protéines</div><div class="n" id="proteinToday">0 g</div><div class="bar"><div class="fill" id="proteinBar"></div></div><div class="muted">objectif <span id="proteinGoalLabel">70</span> g</div></div>
+        <div class="metric"><div class="muted">Eau</div><div class="n" id="waterToday">0 L</div><div class="bar"><div class="fill" id="waterBar"></div></div><div class="muted">objectif <span id="waterGoalLabel">1.5</span> L</div></div>
+        <div class="metric"><div class="muted">Calories estimées</div><div class="n" id="calToday">0</div><div class="muted">indicatif</div></div>
+        <div class="metric"><div class="muted">Dernier apport</div><div class="n" id="lastFood">—</div><div class="muted">éviter les longues plages à vide</div></div>
+      </div>
+      <div id="alerts" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <h2>Saisie rapide</h2>
+      <label>Aliment / boisson</label>
+      <input id="foodName" list="foods" placeholder="ex : skyr, sardines, eau">
+      <datalist id="foods"></datalist>
+      <div class="row">
+        <div><label>Quantité</label><input id="qty" type="number" inputmode="decimal" value="1" step="0.1"></div>
+        <div><label>Unité</label><select id="unit"><option>portion</option><option>g</option><option>ml</option><option>pot</option><option>bol</option></select></div>
+      </div>
+      <div class="row">
+        <div><label>Protéines g</label><input id="protein" type="number" inputmode="decimal" step="0.1"></div>
+        <div><label>Calories</label><input id="calories" type="number" inputmode="decimal" step="1"></div>
+      </div>
+      <label>Eau ml</label><input id="water" type="number" inputmode="numeric" step="50" placeholder="ex : 250">
+      <button onclick="addEntry()">Ajouter</button>
+      <button class="secondary" onclick="quickWater(250)">+ 250 ml eau</button>
+    </div>
+  </section>
+
+  <section id="tab-journal" class="grid hidden">
+    <div class="card">
+      <h2>Journal quotidien</h2>
+      <div class="row">
+        <div><label>Poids kg</label><input id="weight" type="number" inputmode="decimal" step="0.1"></div>
+        <div><label>Sommeil h</label><input id="sleep" type="number" inputmode="decimal" step="0.25"></div>
+      </div>
+      <div class="row">
+        <div><label>Énergie /10</label><input id="energy" type="number" min="0" max="10" step="1"></div>
+        <div><label>Stress /10</label><input id="stress" type="number" min="0" max="10" step="1"></div>
+      </div>
+      <div class="row">
+        <div><label>Vertiges /10</label><input id="dizziness" type="number" min="0" max="10" step="1"></div>
+        <div><label>Nausées /10</label><input id="nausea" type="number" min="0" max="10" step="1"></div>
+      </div>
+      <div class="row">
+        <div><label>Ritaline mg</label><input id="ritalin" type="number" inputmode="numeric" step="5"></div>
+        <div><label>Heure prise</label><input id="ritalinTime" type="time"></div>
+      </div>
+      <label>Notes</label><textarea id="notes" placeholder="fatigue, crampes, contexte, sport, etc."></textarea>
+      <button onclick="saveJournal()">Enregistrer la journée</button>
+    </div>
+  </section>
+
+  <section id="tab-history" class="grid hidden">
+    <div class="card">
+      <h2>Historique du jour</h2>
+      <table id="entriesTable"><thead><tr><th>Heure</th><th>Entrée</th><th>Prot.</th><th>Eau</th></tr></thead><tbody></tbody></table>
+      <button class="danger" onclick="clearToday()">Effacer aujourd’hui</button>
+    </div>
+    <div class="card">
+      <h2>Export</h2>
+      <button onclick="exportData()">Exporter JSON</button>
+      <button class="secondary" onclick="copySummary()">Copier résumé du jour</button>
+      <textarea id="exportBox" placeholder="Export ou résumé ici"></textarea>
+    </div>
+  </section>
+
+  <section id="tab-settings" class="grid hidden">
+    <div class="card">
+      <h2>Réglages</h2>
+      <label>Objectif protéines g/jour</label><input id="proteinGoal" type="number" value="70">
+      <label>Objectif eau L/jour</label><input id="waterGoal" type="number" step="0.1" value="1.5">
+      <label>Heure coucher cible</label><input id="bedtime" type="time" value="23:00">
+      <button onclick="saveSettings()">Sauver réglages</button>
+    </div>
+    <div class="card">
+      <h2>Rappels iPhone</h2>
+      <p class="muted">Une web-app ajoutée à l’écran d’accueil ne peut pas toujours garantir les notifications iOS. Le plus fiable : créer ces rappels dans l’app Rappels.</p>
+      <span class="pill">Boire : toutes les 30 min</span>
+      <span class="pill">Manger/protéines : 9h / 12h / 15h / 19h</span>
+      <span class="pill">Journal : 21h30</span>
+      <span class="pill">Sommeil : 23h</span>
+    </div>
+  </section>
+
+  <nav>
+    <button id="nav-home" class="active" onclick="showTab('home')">Accueil</button>
+    <button id="nav-journal" onclick="showTab('journal')">Journal</button>
+    <button id="nav-history" onclick="showTab('history')">Historique</button>
+    <button id="nav-settings" onclick="showTab('settings')">Réglages</button>
+  </nav>
+
+<script>
+const foodDb = {
+  "skyr nature 150g": {protein:15, calories:90, unit:"pot"},
+  "fromage blanc 150g": {protein:11, calories:100, unit:"pot"},
+  "yaourt grec nature 150g": {protein:10, calories:140, unit:"pot"},
+  "petit gervais mini": {protein:2, calories:45, unit:"pot"},
+  "oeuf": {protein:6, calories:75, unit:"portion"},
+  "thon 80g": {protein:20, calories:100, unit:"portion"},
+  "sardines 1 boite": {protein:22, calories:220, unit:"portion"},
+  "poisson blanc 100g": {protein:20, calories:100, unit:"portion"},
+  "soupe 1 bol": {protein:3, calories:90, unit:"bol"},
+  "compote": {protein:0, calories:70, unit:"pot"},
+  "avocat 1/2": {protein:2, calories:120, unit:"portion"},
+  "eau 250ml": {protein:0, calories:0, water:250, unit:"ml"}
+};
+function today(){ return new Date().toISOString().slice(0,10); }
+function nowTime(){ return new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
+function getData(){ return JSON.parse(localStorage.getItem('sleeveData')||'{}'); }
+function setData(d){ localStorage.setItem('sleeveData', JSON.stringify(d)); }
+function getSettings(){ return JSON.parse(localStorage.getItem('sleeveSettings')||'{"proteinGoal":70,"waterGoal":1.5,"bedtime":"23:00"}'); }
+function init(){
+  const dl=document.getElementById('foods');
+  Object.keys(foodDb).forEach(k=>{ const o=document.createElement('option'); o.value=k; dl.appendChild(o); });
+  document.getElementById('foodName').addEventListener('change', autofillFood);
+  const s=getSettings();
+  document.getElementById('proteinGoal').value=s.proteinGoal;
+  document.getElementById('waterGoal').value=s.waterGoal;
+  document.getElementById('bedtime').value=s.bedtime;
+  updateDashboard();
+}
+function autofillFood(){
+  const f=foodDb[this.value.toLowerCase()] || foodDb[this.value];
+  if(!f) return;
+  document.getElementById('protein').value=f.protein||0;
+  document.getElementById('calories').value=f.calories||0;
+  document.getElementById('water').value=f.water||"";
+  document.getElementById('unit').value=f.unit||"portion";
+}
+function addEntry(){
+  const d=getData(), day=today();
+  d[day]=d[day]||{entries:[], journal:{}};
+  d[day].entries.push({
+    time: nowTime(), name: document.getElementById('foodName').value || "entrée",
+    qty: parseFloat(document.getElementById('qty').value||1),
+    unit: document.getElementById('unit').value,
+    protein: parseFloat(document.getElementById('protein').value||0),
+    calories: parseFloat(document.getElementById('calories').value||0),
+    water: parseFloat(document.getElementById('water').value||0)
+  });
+  setData(d);
+  ["foodName","protein","calories","water"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById('qty').value=1;
+  updateDashboard();
+}
+function quickWater(ml){
+  document.getElementById('foodName').value="eau";
+  document.getElementById('water').value=ml;
+  document.getElementById('protein').value=0;
+  document.getElementById('calories').value=0;
+  addEntry();
+}
+function totals(){
+  const d=getData(), day=today();
+  const e=(d[day]&&d[day].entries)||[];
+  return e.reduce((a,x)=>({protein:a.protein+(x.protein||0), calories:a.calories+(x.calories||0), water:a.water+(x.water||0), last:x.time||a.last}), {protein:0,calories:0,water:0,last:"—"});
+}
+function updateDashboard(){
+  const s=getSettings(), t=totals();
+  document.getElementById('proteinToday').textContent=Math.round(t.protein)+" g";
+  document.getElementById('waterToday').textContent=(t.water/1000).toFixed(2)+" L";
+  document.getElementById('calToday').textContent=Math.round(t.calories);
+  document.getElementById('lastFood').textContent=t.last||"—";
+  document.getElementById('proteinGoalLabel').textContent=s.proteinGoal;
+  document.getElementById('waterGoalLabel').textContent=s.waterGoal;
+  document.getElementById('proteinBar').style.width=Math.min(100,t.protein/s.proteinGoal*100)+"%";
+  document.getElementById('waterBar').style.width=Math.min(100,(t.water/1000)/s.waterGoal*100)+"%";
+  let alerts=[];
+  if(t.water < 800) alerts.push("<span class='warn'>Eau basse : vise des petites gorgées régulières.</span>");
+  if(t.protein < 40) alerts.push("<span class='warn'>Protéines basses : ajoute skyr, poisson, œuf ou fromage blanc.</span>");
+  document.getElementById('alerts').innerHTML=alerts.join("<br>");
+  renderEntries();
+}
+function saveJournal(){
+  const d=getData(), day=today();
+  d[day]=d[day]||{entries:[], journal:{}};
+  d[day].journal = {
+    weight: val('weight'), sleep: val('sleep'), energy: val('energy'), stress: val('stress'),
+    dizziness: val('dizziness'), nausea: val('nausea'), ritalin: val('ritalin'),
+    ritalinTime: document.getElementById('ritalinTime').value, notes: document.getElementById('notes').value,
+    savedAt: new Date().toISOString()
+  };
+  setData(d);
+  alert("Journal enregistré.");
+}
+function val(id){ const v=document.getElementById(id).value; return v==="" ? null : parseFloat(v); }
+function renderEntries(){
+  const tb=document.querySelector("#entriesTable tbody");
+  if(!tb) return;
+  const d=getData(), day=today();
+  const e=(d[day]&&d[day].entries)||[];
+  tb.innerHTML="";
+  e.forEach(x=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${x.time}</td><td>${x.name}<br><span class="muted">${x.qty} ${x.unit}</span></td><td>${x.protein||0} g</td><td>${x.water||0} ml</td>`;
+    tb.appendChild(tr);
+  });
+}
+function clearToday(){
+  if(!confirm("Effacer les entrées d’aujourd’hui ?")) return;
+  const d=getData(), day=today();
+  if(d[day]) d[day].entries=[];
+  setData(d); updateDashboard();
+}
+function saveSettings(){
+  const s={proteinGoal:parseFloat(document.getElementById('proteinGoal').value||70), waterGoal:parseFloat(document.getElementById('waterGoal').value||1.5), bedtime:document.getElementById('bedtime').value||"23:00"};
+  localStorage.setItem('sleeveSettings', JSON.stringify(s));
+  updateDashboard();
+  alert("Réglages sauvegardés.");
+}
+function exportData(){ document.getElementById('exportBox').value=JSON.stringify(getData(), null, 2); }
+function copySummary(){
+  const t=totals(), d=getData()[today()]||{}, j=d.journal||{};
+  const txt=`Résumé ${today()}\nPoids: ${j.weight ?? "?"} kg\nProtéines: ${Math.round(t.protein)} g\nEau: ${(t.water/1000).toFixed(2)} L\nCalories estimées: ${Math.round(t.calories)}\nSommeil: ${j.sleep ?? "?"} h\nÉnergie: ${j.energy ?? "?"}/10\nStress: ${j.stress ?? "?"}/10\nVertiges: ${j.dizziness ?? "?"}/10\nNausées: ${j.nausea ?? "?"}/10\nRitaline: ${j.ritalin ?? "?"} mg à ${j.ritalinTime ?? "?"}\nNotes: ${j.notes ?? ""}`;
+  document.getElementById('exportBox').value=txt;
+  navigator.clipboard && navigator.clipboard.writeText(txt);
+}
+function showTab(name){
+  ["home","journal","history","settings"].forEach(t=>{
+    document.getElementById("tab-"+t).classList.toggle("hidden", t!==name);
+    document.getElementById("nav-"+t).classList.toggle("active", t===name);
+  });
+  updateDashboard();
+}
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+init();
+</script>
+</body>
+</html>
